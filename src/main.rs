@@ -1,7 +1,16 @@
+extern crate async_std;
+extern crate peg;
+extern crate rand;
+extern crate regex;
 extern crate serde_json;
 extern crate serenity;
 extern crate tokio;
 
+mod parser;
+mod runtime;
+
+use async_std::sync::Mutex;
+use regex::Regex;
 use serde_json::json;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
@@ -12,7 +21,7 @@ async fn main() {
     // Login with a bot token from the environment
     let token = include_str!("./token");
     let mut client = Client::builder(token)
-        .event_handler(Handler)
+        .event_handler(Handler::default())
         .await
         .expect("Error creating client");
 
@@ -22,20 +31,46 @@ async fn main() {
     }
 }
 
-struct Handler;
+struct Handler {
+    mention_pattern: Regex,
+}
+
+impl Default for Handler {
+    fn default() -> Self {
+        Self {
+            mention_pattern: Regex::new(r"<@!\d+>").unwrap(),
+        }
+    }
+}
 
 #[serenity::async_trait]
 impl EventHandler for Handler {
     async fn message(&self, context: Context, msg: Message) {
         if msg.mentions_me(&context).await.unwrap_or(false) {
-            let map = json!({
-                "content": "It works!",
-                "message_reference": {
-                    "message_id": *msg.id.as_u64()
-                }
-            });
+            // メンションを削除
+            let content = self.mention_pattern.replace_all(&msg.content, "");
+            if let Ok(mut value) = parser::context::parse(&content) {
+                let result = {
+                    let mut rng = rand::thread_rng();
+                    format!("{}\n    ->{}", &content, value.evalute(&mut rng))
+                };
+                let map = json!({
+                    "content": result,
+                    "message_reference": {
+                        "message_id": *msg.id.as_u64()
+                    }
+                });
+                let _ = context.http.send_message(msg.channel_id.0, &map).await;
+            } else {
+                let map = json!({
+                    "content": "It works!",
+                    "message_reference": {
+                        "message_id": *msg.id.as_u64()
+                    }
+                });
 
-            let _ = context.http.send_message(msg.channel_id.0, &map).await;
+                let _ = context.http.send_message(msg.channel_id.0, &map).await;
+            }
         }
     }
 }
