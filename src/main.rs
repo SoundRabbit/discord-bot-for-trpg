@@ -52,7 +52,7 @@ impl EventHandler for Handler {
             if let Ok(mut value) = parser::context::parse(&content) {
                 let result = {
                     let mut rng = rand::thread_rng();
-                    format!("{}\n    ->{}", &content, value.evalute(&mut rng))
+                    format!("{} -> {}", &content, value.evalute(&mut rng))
                 };
                 let map = json!({
                     "content": result,
