@@ -1,4 +1,3 @@
-extern crate async_std;
 extern crate peg;
 extern crate rand;
 extern crate regex;
@@ -9,7 +8,6 @@ extern crate tokio;
 mod parser;
 mod runtime;
 
-use async_std::sync::Mutex;
 use regex::Regex;
 use serde_json::json;
 use serenity::model::prelude::*;
@@ -63,7 +61,7 @@ impl EventHandler for Handler {
                 let _ = context.http.send_message(msg.channel_id.0, &map).await;
             } else {
                 let map = json!({
-                    "content": "It works!",
+                    "content": format!("It works! your message is: {}", &content),
                     "message_reference": {
                         "message_id": *msg.id.as_u64()
                     }
