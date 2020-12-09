@@ -36,7 +36,7 @@ struct Handler {
 impl Default for Handler {
     fn default() -> Self {
         Self {
-            mention_pattern: Regex::new(r"<@!\d+>").unwrap(),
+            mention_pattern: Regex::new(r"<@!?\d+>").unwrap(),
         }
     }
 }
@@ -46,6 +46,7 @@ impl EventHandler for Handler {
     async fn message(&self, context: Context, msg: Message) {
         if msg.mentions_me(&context).await.unwrap_or(false) {
             // メンションを削除
+            println!("{}", &msg.content);
             let content = self.mention_pattern.replace_all(&msg.content, "");
             if let Ok(mut value) = parser::context::parse(&content) {
                 let result = {
@@ -61,7 +62,7 @@ impl EventHandler for Handler {
                 let _ = context.http.send_message(msg.channel_id.0, &map).await;
             } else {
                 let map = json!({
-                    "content": format!("It works! your message is: {}", &content),
+                    "content": format!("It works!"),
                     "message_reference": {
                         "message_id": *msg.id.as_u64()
                     }
