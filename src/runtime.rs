@@ -37,22 +37,65 @@ impl ast::Expr0 {
             Self::Expr0 {
                 left,
                 right,
-                operator: _,
-            } => {
-                if let (Some(left), Some(right)) = (
-                    left.evalute(rng).as_integer(),
-                    right.evalute(rng).as_integer(),
-                ) {
-                    let mut res = 0;
-                    for _ in 0..left {
-                        let d: f64 = rng.sample(rand::distributions::OpenClosed01);
-                        res += (d * right as f64).ceil() as i64;
+                operator,
+            } => match operator.as_str() {
+                "+" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        Evaluted::Integer(left + right)
+                    } else {
+                        Evaluted::None
                     }
-                    Evaluted::Integer(res)
-                } else {
-                    Evaluted::None
                 }
-            }
+                "-" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        Evaluted::Integer(left - right)
+                    } else {
+                        Evaluted::None
+                    }
+                }
+                "*" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        Evaluted::Integer(left * right)
+                    } else {
+                        Evaluted::None
+                    }
+                }
+                "/" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        Evaluted::Integer(left / right)
+                    } else {
+                        Evaluted::None
+                    }
+                }
+                "d" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        let mut res = 0;
+                        for _ in 0..left {
+                            let d: f64 = rng.sample(rand::distributions::OpenClosed01);
+                            res += (d * right as f64).ceil() as i64;
+                        }
+                        Evaluted::Integer(res)
+                    } else {
+                        Evaluted::None
+                    }
+                }
+                _ => Evaluted::None,
+            },
             Self::Term(term) => term.evalute(rng),
         }
     }

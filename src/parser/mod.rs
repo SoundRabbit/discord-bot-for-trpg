@@ -11,6 +11,12 @@ peg::parser! {
 
         rule expr0() -> ast::Expr0
             = precedence! {
+                left:(@) "+" right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("+")}}
+                left:(@) "-" right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("-")}}
+                --
+                left:(@) "*" right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("*")}}
+                left:(@) "/" right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("/")}}
+                --
                 left:(@) ("d"/"D") right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("d")}}
                 --
                 term:term() {ast::Expr0::Term(term)}
