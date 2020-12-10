@@ -9,6 +9,7 @@ pub enum Expr0 {
 
 pub enum Term {
     Expr0(Box<Expr0>),
+    Array(Vec<Expr0>),
     Literal(Literal),
 }
 

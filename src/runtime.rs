@@ -8,6 +8,7 @@ pub enum Value {
 pub enum Evaluted {
     None,
     Integer(i64),
+    Array(Vec<Evaluted>),
 }
 
 impl Value {
@@ -22,12 +23,21 @@ impl Value {
     }
 }
 
-impl std::fmt::Display for Evaluted {
+impl std::fmt::Debug for Evaluted {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::None => write!(f, "None"),
             Self::Integer(val) => write!(f, "{}", val),
+            Self::Array(vals) => {
+                write!(f, "{:?}", vals)
+            }
         }
+    }
+}
+
+impl std::fmt::Display for Evaluted {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
@@ -105,6 +115,7 @@ impl ast::Term {
     fn evalute(&self, rng: &mut impl rand::Rng) -> Evaluted {
         match self {
             Self::Expr0(expr) => expr.evalute(rng),
+            Self::Array(vals) => Evaluted::Array(vals.iter().map(|v| v.evalute(rng)).collect()),
             Self::Literal(literal) => literal.evalute(),
         }
     }

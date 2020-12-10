@@ -25,6 +25,7 @@ peg::parser! {
         rule term() -> ast::Term
             = precedence! {
                 "(" expr:expr0() ")" {ast::Term::Expr0(Box::new(expr))}
+                "[" exprs:expr0() ** "," "]" {ast::Term::Array(exprs)}
                 --
                 literal:literal() {ast::Term::Literal(literal)}
             }
