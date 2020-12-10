@@ -89,6 +89,21 @@ impl ast::Expr0 {
                         Evaluted::None
                     }
                 }
+                "b" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        let mut res = vec![];
+                        for _ in 0..left {
+                            let d: f64 = rng.sample(rand::distributions::OpenClosed01);
+                            res.push(Evaluted::Integer((d * right as f64).ceil() as i64));
+                        }
+                        Evaluted::Array(res)
+                    } else {
+                        Evaluted::None
+                    }
+                }
                 "d" => {
                     if let (Some(left), Some(right)) = (
                         left.evalute(rng).as_integer(),

@@ -18,6 +18,7 @@ peg::parser! {
                 left:(@) "/" right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("/")}}
                 --
                 left:(@) ("d"/"D") right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("d")}}
+                left:(@) ("b"/"B") right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("b")}}
                 --
                 term:term() {ast::Expr0::Term(term)}
             }
