@@ -6,19 +6,21 @@ peg::parser! {
     pub grammar context() for str {
         pub rule parse() -> Value
             = precedence! {
-                dlm() expr: expr0() {Value::Unevaluted(expr)}
+                dlm()? expr: expr0() dlm()? {Value::Unevaluted(expr)}
+                dlm()? "`" dlm()? expr: expr0() dlm()? "`" dlm()? {Value::Unevaluted(expr)}
+                dlm()? "```" dlm()? expr: expr0() dlm()? "```" dlm()? {Value::Unevaluted(expr)}
             }
 
         rule expr0() -> ast::Expr0
             = precedence! {
-                left:(@) "+" right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("+")}}
-                left:(@) "-" right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("-")}}
+                left:(@) dlm()? "+" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("+")}}
+                left:(@) dlm()? "-" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("-")}}
                 --
-                left:(@) "*" right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("*")}}
-                left:(@) "/" right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("/")}}
+                left:(@) dlm()? "*" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("*")}}
+                left:(@) dlm()? "/" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("/")}}
                 --
-                left:(@) ("d"/"D") right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("d")}}
-                left:(@) ("b"/"B") right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("b")}}
+                left:(@) dlm()? ("d"/"D") dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("d")}}
+                left:(@) dlm()? ("b"/"B") dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("b")}}
                 --
                 term:term() {ast::Expr0::Term(term)}
             }
@@ -26,7 +28,7 @@ peg::parser! {
         rule term() -> ast::Term
             = precedence! {
                 "(" expr:expr0() ")" {ast::Term::Expr0(Box::new(expr))}
-                "[" exprs:expr0() ** "," "]" {ast::Term::Array(exprs)}
+                "[" exprs:expr0() ** ("," dlm()?) "]" {ast::Term::Array(exprs)}
                 --
                 literal:literal() {ast::Term::Literal(literal)}
             }

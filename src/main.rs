@@ -31,12 +31,14 @@ async fn main() {
 
 struct Handler {
     mention_pattern: Regex,
+    comment_pattern: Regex,
 }
 
 impl Default for Handler {
     fn default() -> Self {
         Self {
             mention_pattern: Regex::new(r"<@!?\d+>").unwrap(),
+            comment_pattern: Regex::new(r"//.*$").unwrap(),
         }
     }
 }
@@ -48,6 +50,8 @@ impl EventHandler for Handler {
             // メンションを削除
             println!("{}", &msg.content);
             let content = self.mention_pattern.replace_all(&msg.content, "");
+            let content = self.comment_pattern.replace_all(&content, "");
+            println!("{}", &content);
             if let Ok(mut value) = parser::context::parse(&content) {
                 let result = {
                     let mut rng = rand::thread_rng();
