@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 pub enum Expr0 {
     Expr0 {
         right: Box<Expr0>,
@@ -10,6 +12,7 @@ pub enum Expr0 {
 pub enum Term {
     Expr0(Box<Expr0>),
     Array(Vec<Expr0>),
+    Record(HashMap<String, Expr0>),
     Literal(Literal),
 }
 

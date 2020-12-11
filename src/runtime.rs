@@ -1,4 +1,5 @@
 use crate::parser::ast;
+use std::collections::HashMap;
 
 pub enum Value {
     Evaluted(Evaluted),
@@ -9,6 +10,7 @@ pub enum Evaluted {
     None,
     Integer(i64),
     Array(Vec<Evaluted>),
+    Record(HashMap<String, Evaluted>),
 }
 
 impl Value {
@@ -29,6 +31,9 @@ impl std::fmt::Debug for Evaluted {
             Self::None => write!(f, "None"),
             Self::Integer(val) => write!(f, "{}", val),
             Self::Array(vals) => {
+                write!(f, "{:?}", vals)
+            }
+            Self::Record(vals) => {
                 write!(f, "{:?}", vals)
             }
         }
@@ -131,6 +136,11 @@ impl ast::Term {
         match self {
             Self::Expr0(expr) => expr.evalute(rng),
             Self::Array(vals) => Evaluted::Array(vals.iter().map(|v| v.evalute(rng)).collect()),
+            Self::Record(vals) => Evaluted::Record(
+                vals.iter()
+                    .map(|(i, v)| (i.clone(), v.evalute(rng)))
+                    .collect(),
+            ),
             Self::Literal(literal) => literal.evalute(),
         }
     }

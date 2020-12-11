@@ -27,11 +27,15 @@ peg::parser! {
 
         rule term() -> ast::Term
             = precedence! {
-                "(" expr:expr0() ")" {ast::Term::Expr0(Box::new(expr))}
-                "[" exprs:expr0() ** ("," dlm()?) "]" {ast::Term::Array(exprs)}
+                "(" dlm()? expr:expr0() dlm()? ")" {ast::Term::Expr0(Box::new(expr))}
+                "[" dlm()? exprs:expr0() ** ("," dlm()?) dlm()? "]" {ast::Term::Array(exprs)}
+                "{" dlm()? pairs:key_value() ** ("," dlm()?) dlm()? "}" {ast::Term::Record(pairs.into_iter().collect())}
                 --
                 literal:literal() {ast::Term::Literal(literal)}
             }
+
+        rule key_value() -> (String, ast::Expr0)
+            = ident:ident() dlm()? ":" dlm()? expr:expr0() { (ident, expr) }
 
         rule literal() -> ast::Literal
             = precedence! {
@@ -39,7 +43,7 @@ peg::parser! {
             }
 
         rule ident() -> String
-            = x:$(['A'..='Z' | 'a'..='z']) xs:$(['0'..='9' | 'a'..='z' | 'A'..='Z' | '_']) { String::from(x) + xs }
+            = x:$(['A'..='Z' | 'a'..='z']) xs:$(['0'..='9' | 'a'..='z' | 'A'..='Z' | '_']*) { String::from(x) + xs }
 
         rule dlm() = quiet!{[' ' | '\n' | '\t']+}
     }
