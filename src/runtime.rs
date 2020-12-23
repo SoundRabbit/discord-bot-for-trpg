@@ -15,12 +15,12 @@ pub enum Evaluted {
 }
 
 impl Value {
-    pub fn evalute(&mut self, rng: &mut impl rand::Rng) -> &Evaluted {
+    pub fn evalute(&mut self, rng: &mut impl rand::Rng, log: &mut Vec<String>) -> &Evaluted {
         match self {
             Self::Evaluted(value) => value,
             Self::Unevaluted(expr) => {
-                *self = Self::Evaluted(expr.evalute(rng));
-                self.evalute(rng)
+                *self = Self::Evaluted(expr.evalute(rng, log));
+                self.evalute(rng, log)
             }
         }
     }
@@ -49,7 +49,7 @@ impl std::fmt::Display for Evaluted {
 }
 
 impl ast::Expr0 {
-    fn evalute(&self, rng: &mut impl rand::Rng) -> Evaluted {
+    fn evalute(&self, rng: &mut impl rand::Rng, log: &mut Vec<String>) -> Evaluted {
         match self {
             Self::Expr0 {
                 left,
@@ -58,8 +58,8 @@ impl ast::Expr0 {
             } => match operator.as_str() {
                 "==" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
                         Evaluted::Boolean(left == right)
                     } else {
@@ -68,8 +68,8 @@ impl ast::Expr0 {
                 }
                 "!=" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
                         Evaluted::Boolean(left != right)
                     } else {
@@ -78,8 +78,8 @@ impl ast::Expr0 {
                 }
                 "<=" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
                         Evaluted::Boolean(left <= right)
                     } else {
@@ -88,8 +88,8 @@ impl ast::Expr0 {
                 }
                 ">=" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
                         Evaluted::Boolean(left >= right)
                     } else {
@@ -98,8 +98,8 @@ impl ast::Expr0 {
                 }
                 "<" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
                         Evaluted::Boolean(left < right)
                     } else {
@@ -108,8 +108,8 @@ impl ast::Expr0 {
                 }
                 ">" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
                         Evaluted::Boolean(left > right)
                     } else {
@@ -118,8 +118,8 @@ impl ast::Expr0 {
                 }
                 "+" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
                         Evaluted::Integer(left + right)
                     } else {
@@ -128,8 +128,8 @@ impl ast::Expr0 {
                 }
                 "-" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
                         Evaluted::Integer(left - right)
                     } else {
@@ -138,8 +138,8 @@ impl ast::Expr0 {
                 }
                 "*" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
                         Evaluted::Integer(left * right)
                     } else {
@@ -148,8 +148,8 @@ impl ast::Expr0 {
                 }
                 "/" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
                         Evaluted::Integer(left / right)
                     } else {
@@ -158,8 +158,8 @@ impl ast::Expr0 {
                 }
                 "b" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
                         let mut res = vec![];
                         for _ in 0..left {
@@ -173,34 +173,43 @@ impl ast::Expr0 {
                 }
                 "d" => {
                     if let (Some(left), Some(right)) = (
-                        left.evalute(rng).as_integer(),
-                        right.evalute(rng).as_integer(),
+                        left.evalute(rng, log).as_integer(),
+                        right.evalute(rng, log).as_integer(),
                     ) {
-                        let mut res = 0;
+                        let mut res = vec![];
                         for _ in 0..left {
                             let d: f64 = rng.sample(rand::distributions::OpenClosed01);
-                            res += (d * right as f64).ceil() as i64;
+                            res.push((d * right as f64).ceil() as i64);
                         }
-                        Evaluted::Integer(res)
+                        log.push(format!("{:?}", &res));
+
+                        let mut sum = 0;
+                        for d in res {
+                            sum += d;
+                        }
+
+                        Evaluted::Integer(sum)
                     } else {
                         Evaluted::None
                     }
                 }
                 _ => Evaluted::None,
             },
-            Self::Term(term) => term.evalute(rng),
+            Self::Term(term) => term.evalute(rng, log),
         }
     }
 }
 
 impl ast::Term {
-    fn evalute(&self, rng: &mut impl rand::Rng) -> Evaluted {
+    fn evalute(&self, rng: &mut impl rand::Rng, log: &mut Vec<String>) -> Evaluted {
         match self {
-            Self::Expr0(expr) => expr.evalute(rng),
-            Self::Array(vals) => Evaluted::Array(vals.iter().map(|v| v.evalute(rng)).collect()),
+            Self::Expr0(expr) => expr.evalute(rng, log),
+            Self::Array(vals) => {
+                Evaluted::Array(vals.iter().map(|v| v.evalute(rng, log)).collect())
+            }
             Self::Record(vals) => Evaluted::Record(
                 vals.iter()
-                    .map(|(i, v)| (i.clone(), v.evalute(rng)))
+                    .map(|(i, v)| (i.clone(), v.evalute(rng, log)))
                     .collect(),
             ),
             Self::Literal(literal) => literal.evalute(),
