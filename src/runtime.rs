@@ -9,6 +9,7 @@ pub enum Value {
 pub enum Evaluted {
     None,
     Integer(i64),
+    Boolean(bool),
     Array(Vec<Evaluted>),
     Record(HashMap<String, Evaluted>),
 }
@@ -30,6 +31,7 @@ impl std::fmt::Debug for Evaluted {
         match self {
             Self::None => write!(f, "None"),
             Self::Integer(val) => write!(f, "{}", val),
+            Self::Boolean(val) => write!(f, "{}", val),
             Self::Array(vals) => {
                 write!(f, "{:?}", vals)
             }
@@ -54,6 +56,66 @@ impl ast::Expr0 {
                 right,
                 operator,
             } => match operator.as_str() {
+                "==" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        Evaluted::Boolean(left == right)
+                    } else {
+                        Evaluted::None
+                    }
+                }
+                "!=" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        Evaluted::Boolean(left != right)
+                    } else {
+                        Evaluted::None
+                    }
+                }
+                "<=" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        Evaluted::Boolean(left <= right)
+                    } else {
+                        Evaluted::None
+                    }
+                }
+                ">=" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        Evaluted::Boolean(left >= right)
+                    } else {
+                        Evaluted::None
+                    }
+                }
+                "<" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        Evaluted::Boolean(left < right)
+                    } else {
+                        Evaluted::None
+                    }
+                }
+                ">" => {
+                    if let (Some(left), Some(right)) = (
+                        left.evalute(rng).as_integer(),
+                        right.evalute(rng).as_integer(),
+                    ) {
+                        Evaluted::Boolean(left > right)
+                    } else {
+                        Evaluted::None
+                    }
+                }
                 "+" => {
                     if let (Some(left), Some(right)) = (
                         left.evalute(rng).as_integer(),

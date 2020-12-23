@@ -13,6 +13,14 @@ peg::parser! {
 
         rule expr0() -> ast::Expr0
             = precedence! {
+                left:(@) dlm()? "==" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("==")}}
+                left:(@) dlm()? "!=" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("!=")}}
+                left:(@) dlm()? "<=" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("<=")}}
+                left:(@) dlm()? ">=" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from(">=")}}
+                --
+                left:(@) dlm()? "<" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("<")}}
+                left:(@) dlm()? ">" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from(">")}}
+                --
                 left:(@) dlm()? "+" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("+")}}
                 left:(@) dlm()? "-" dlm()? right:@ {ast::Expr0::Expr0{left: Box::new(left), right: Box::new(right), operator: String::from("-")}}
                 --
