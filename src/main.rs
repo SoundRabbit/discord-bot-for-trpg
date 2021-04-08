@@ -48,10 +48,10 @@ impl EventHandler for Handler {
     async fn message(&self, context: Context, msg: Message) {
         if msg.mentions_me(&context).await.unwrap_or(false) {
             // メンションを削除
-            println!("{}", &msg.content);
+            // println!("{}", &msg.content);
             let content = self.mention_pattern.replace_all(&msg.content, "");
             let content = self.comment_pattern.replace_all(&content, "");
-            println!("{}", &content);
+            // println!("{}", &content);
             if let Ok(mut value) = parser::context::parse(&content) {
                 let result = {
                     let mut rng = rand::thread_rng();
