@@ -14,6 +14,11 @@ pub enum Evaluted {
     Record(HashMap<String, Evaluted>),
 }
 
+pub enum EvalutedElement {
+    Integer(i64),
+    Boolean(bool),
+}
+
 impl Value {
     pub fn evalute(&mut self, rng: &mut impl rand::Rng, log: &mut Vec<String>) -> &Evaluted {
         match self {
@@ -31,9 +36,10 @@ impl std::fmt::Debug for Evaluted {
         match self {
             Self::None => write!(f, "None"),
             Self::Integer(val) => write!(f, "{}", val),
-            Self::Boolean(val) => write!(f, "{}", val),
+            Self::Boolean(true) => write!(f, "成功"),
+            Self::Boolean(false) => write!(f, "失敗"),
             Self::Array(vals) => {
-                write!(f, "{:?}", vals)
+                write!(f, "{}", Self::fmt_array(vals))
             }
             Self::Record(vals) => {
                 write!(f, "{:?}", vals)
@@ -57,64 +63,78 @@ impl ast::Expr0 {
                 operator,
             } => match operator.as_str() {
                 "==" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(rng, log).as_integer(),
-                        right.evalute(rng, log).as_integer(),
-                    ) {
-                        Evaluted::Boolean(left == right)
-                    } else {
-                        Evaluted::None
-                    }
+                    let left = left.evalute(rng, log);
+                    let right = right.evalute(rng, log);
+                    Self::compare(log, &left, &right, &mut |left, right| {
+                        if let (Some(left), Some(right)) = (left.as_boolean(), right.as_boolean()) {
+                            Evaluted::Boolean(left == right)
+                        } else if let (Some(left), Some(right)) =
+                            (left.as_integer(), right.as_integer())
+                        {
+                            Evaluted::Boolean(left == right)
+                        } else {
+                            Evaluted::None
+                        }
+                    })
                 }
                 "!=" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(rng, log).as_integer(),
-                        right.evalute(rng, log).as_integer(),
-                    ) {
-                        Evaluted::Boolean(left != right)
-                    } else {
-                        Evaluted::None
-                    }
+                    let left = left.evalute(rng, log);
+                    let right = right.evalute(rng, log);
+                    Self::compare(log, &left, &right, &mut |left, right| {
+                        if let (Some(left), Some(right)) = (left.as_boolean(), right.as_boolean()) {
+                            Evaluted::Boolean(left != right)
+                        } else if let (Some(left), Some(right)) =
+                            (left.as_integer(), right.as_integer())
+                        {
+                            Evaluted::Boolean(left != right)
+                        } else {
+                            Evaluted::None
+                        }
+                    })
                 }
                 "<=" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(rng, log).as_integer(),
-                        right.evalute(rng, log).as_integer(),
-                    ) {
-                        Evaluted::Boolean(left <= right)
-                    } else {
-                        Evaluted::None
-                    }
+                    let left = left.evalute(rng, log);
+                    let right = right.evalute(rng, log);
+                    Self::compare(log, &left, &right, &mut |left, right| {
+                        if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                            Evaluted::Boolean(left <= right)
+                        } else {
+                            Evaluted::None
+                        }
+                    })
                 }
                 ">=" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(rng, log).as_integer(),
-                        right.evalute(rng, log).as_integer(),
-                    ) {
-                        Evaluted::Boolean(left >= right)
-                    } else {
-                        Evaluted::None
-                    }
+                    let left = left.evalute(rng, log);
+                    let right = right.evalute(rng, log);
+                    Self::compare(log, &left, &right, &mut |left, right| {
+                        if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                            Evaluted::Boolean(left >= right)
+                        } else {
+                            Evaluted::None
+                        }
+                    })
                 }
                 "<" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(rng, log).as_integer(),
-                        right.evalute(rng, log).as_integer(),
-                    ) {
-                        Evaluted::Boolean(left < right)
-                    } else {
-                        Evaluted::None
-                    }
+                    let left = left.evalute(rng, log);
+                    let right = right.evalute(rng, log);
+                    Self::compare(log, &left, &right, &mut |left, right| {
+                        if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                            Evaluted::Boolean(left < right)
+                        } else {
+                            Evaluted::None
+                        }
+                    })
                 }
                 ">" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(rng, log).as_integer(),
-                        right.evalute(rng, log).as_integer(),
-                    ) {
-                        Evaluted::Boolean(left > right)
-                    } else {
-                        Evaluted::None
-                    }
+                    let left = left.evalute(rng, log);
+                    let right = right.evalute(rng, log);
+                    Self::compare(log, &left, &right, &mut |left, right| {
+                        if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                            Evaluted::Boolean(left > right)
+                        } else {
+                            Evaluted::None
+                        }
+                    })
                 }
                 "+" => {
                     if let (Some(left), Some(right)) = (
@@ -198,6 +218,32 @@ impl ast::Expr0 {
             Self::Term(term) => term.evalute(rng, log),
         }
     }
+
+    fn compare(
+        log: &mut Vec<String>,
+        left: &Evaluted,
+        right: &Evaluted,
+        operator: &mut impl FnMut(&EvalutedElement, &EvalutedElement) -> Evaluted,
+    ) -> Evaluted {
+        if let (Some(left), Some(right)) = (left.as_element(), right.as_element()) {
+            operator(&left, &right)
+        } else if let Some(left) = left.as_array() {
+            log.push(Evaluted::fmt_array(left));
+            let evaluted: Vec<Evaluted> = left
+                .iter()
+                .map(|item| Self::compare(log, item, right, operator))
+                .collect();
+            Evaluted::Array(evaluted)
+        } else if let Some(left) = left.as_record() {
+            let evaluted: HashMap<String, Evaluted> = left
+                .iter()
+                .map(|(key, item)| (key.clone(), Self::compare(log, item, right, operator)))
+                .collect();
+            Evaluted::Record(evaluted)
+        } else {
+            Evaluted::None
+        }
+    }
 }
 
 impl ast::Term {
@@ -226,6 +272,70 @@ impl ast::Literal {
 }
 
 impl Evaluted {
+    fn is_boolean(&self) -> bool {
+        match self {
+            Self::Boolean(_) => true,
+            _ => false,
+        }
+    }
+
+    fn as_boolean(&self) -> Option<bool> {
+        match self {
+            Self::Boolean(val) => Some(*val),
+            _ => None,
+        }
+    }
+
+    fn as_integer(&self) -> Option<i64> {
+        match self {
+            Self::Integer(val) => Some(*val),
+            _ => None,
+        }
+    }
+
+    fn as_array(&self) -> Option<&Vec<Evaluted>> {
+        match self {
+            Self::Array(val) => Some(val),
+            _ => None,
+        }
+    }
+
+    fn as_record(&self) -> Option<&HashMap<String, Evaluted>> {
+        match self {
+            Self::Record(val) => Some(&val),
+            _ => None,
+        }
+    }
+
+    fn as_element(&self) -> Option<EvalutedElement> {
+        match self {
+            Self::Integer(val) => Some(EvalutedElement::Integer(*val)),
+            Self::Boolean(val) => Some(EvalutedElement::Boolean(*val)),
+            _ => None,
+        }
+    }
+
+    fn fmt_array(vals: &Vec<Evaluted>) -> String {
+        if vals.iter().all(|val| val.is_boolean()) {
+            let hit_num = vals
+                .iter()
+                .filter(|val| val.as_boolean().unwrap_or(false))
+                .count();
+            format!("{}成功", hit_num)
+        } else {
+            format!("{:?}", vals)
+        }
+    }
+}
+
+impl EvalutedElement {
+    fn as_boolean(&self) -> Option<bool> {
+        match self {
+            Self::Boolean(val) => Some(*val),
+            _ => None,
+        }
+    }
+
     fn as_integer(&self) -> Option<i64> {
         match self {
             Self::Integer(val) => Some(*val),
