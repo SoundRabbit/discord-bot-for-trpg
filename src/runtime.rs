@@ -258,12 +258,13 @@ impl ast::Expr0 {
                             let d: f64 = rng.sample(rand::distributions::OpenClosed01);
                             res.push((d * right as f64).ceil() as i64);
                         }
-                        log.push(format!("{:?}", &res));
 
                         let mut sum = 0;
-                        for d in res {
-                            sum += d;
+                        for d in &res {
+                            sum += *d;
                         }
+
+                        log.push(format!("{} {:?}", sum, &res));
 
                         Arc::new(Value::Integer(sum))
                     } else {
