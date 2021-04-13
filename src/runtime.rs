@@ -5,19 +5,7 @@ use std::collections::HashMap;
 mod environment;
 
 pub use environment::Environment;
-
-pub enum Value {
-    None,
-    Integer(i64),
-    Boolean(bool),
-    Array(Vec<Arc<Value>>),
-    Record(HashMap<Arc<String>, Arc<Value>>),
-    Fn {
-        env: Environment,
-        arg: Arc<String>,
-        value: Arc<ast::Expr0>,
-    },
-}
+pub use environment::Value;
 
 pub enum ValueElement {
     Integer(i64),
@@ -31,6 +19,7 @@ impl std::fmt::Debug for Value {
             Self::Integer(val) => write!(f, "{}", val),
             Self::Boolean(true) => write!(f, "成功"),
             Self::Boolean(false) => write!(f, "失敗"),
+            Self::String(val) => write!(f, "{}", val.as_str()),
             Self::Array(vals) => {
                 write!(f, "{}", Self::fmt_array(vals))
             }
@@ -38,7 +27,10 @@ impl std::fmt::Debug for Value {
                 write!(f, "{:?}", vals)
             }
             Self::Fn { arg, .. } => {
-                write!(f, "Fn {}", arg.as_str())
+                write!(f, "fn {}", arg.as_str())
+            }
+            Self::BuiltInFunction { .. } => {
+                write!(f, "fn")
             }
         }
     }
@@ -102,6 +94,10 @@ impl ast::Expr0 {
                             let argv = right.evalute(env, rng, log);
                             async_std::task::block_on(scoped_env.insert(Arc::clone(arg), argv));
                             value.evalute(&mut scoped_env, rng, log)
+                        }
+                        Value::BuiltInFunction { implement, .. } => {
+                            let argv = right.evalute(env, rng, log);
+                            implement(argv)
                         }
                         _ => Arc::new(Value::None),
                     }
@@ -231,6 +227,26 @@ impl ast::Expr0 {
                         Arc::new(Value::Integer(left / right))
                     } else {
                         Arc::new(Value::None)
+                    }
+                }
+                "." => {
+                    let right = right.evalute(env, rng, log);
+                    match right.as_ref() {
+                        Value::Fn {
+                            env: scoped_env,
+                            arg,
+                            value,
+                        } => {
+                            let mut scoped_env = scoped_env.capture();
+                            let argv = left.evalute(env, rng, log);
+                            async_std::task::block_on(scoped_env.insert(Arc::clone(arg), argv));
+                            value.evalute(&mut scoped_env, rng, log)
+                        }
+                        Value::BuiltInFunction { implement, .. } => {
+                            let argv = left.evalute(env, rng, log);
+                            implement(argv)
+                        }
+                        _ => Arc::new(Value::None),
                     }
                 }
                 "b" => {

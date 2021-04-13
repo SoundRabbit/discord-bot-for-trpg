@@ -38,6 +38,8 @@ peg::parser! {
                 left:(@) dlm()? "*" dlm()? right:@ {ast::Expr0::Expr0{left: Arc::new(left), right: Arc::new(right), operator: String::from("*")}}
                 left:(@) dlm()? "/" dlm()? right:@ {ast::Expr0::Expr0{left: Arc::new(left), right: Arc::new(right), operator: String::from("/")}}
                 --
+                left:(@) dlm()? "." dlm()? right:@ {ast::Expr0::Expr0{left: Arc::new(left), right: Arc::new(right), operator: String::from(".")}}
+                --
                 left:(@) dlm()? ("d"/"D") dlm()? right:@ {ast::Expr0::Expr0{left: Arc::new(left), right: Arc::new(right), operator: String::from("d")}}
                 left:(@) dlm()? ("b"/"B") dlm()? right:@ {ast::Expr0::Expr0{left: Arc::new(left), right: Arc::new(right), operator: String::from("b")}}
                 --
