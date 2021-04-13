@@ -48,37 +48,43 @@ impl EventHandler for Handler {
     async fn message(&self, context: Context, msg: Message) {
         if msg.mentions_me(&context).await.unwrap_or(false) {
             // メンションを削除
-            // println!("{}", &msg.content);
+            println!("{}", &msg.content);
             let content = self.mention_pattern.replace_all(&msg.content, "");
             let content = self.comment_pattern.replace_all(&content, "");
-            // println!("{}", &content);
-            if let Ok(mut value) = parser::context::parse(&content) {
-                let result = {
-                    let mut rng = rand::thread_rng();
-                    let mut log = vec![];
-                    let evaluted = value.evalute(&mut rng, &mut log);
-                    let mut res = format!("{}\n", &content);
-                    for a_line in log {
-                        res += format!(" -> {}", a_line).as_str();
-                    }
-                    res + format!(" -> {}", evaluted).as_str()
-                };
-                let map = json!({
-                    "content": result,
-                    "message_reference": {
-                        "message_id": *msg.id.as_u64()
-                    }
-                });
-                let _ = context.http.send_message(msg.channel_id.0, &map).await;
-            } else {
-                let map = json!({
-                    "content": format!("It works!"),
-                    "message_reference": {
-                        "message_id": *msg.id.as_u64()
-                    }
-                });
+            println!("{}", &content);
+            match parser::context::parse(&content) {
+                Ok(exp0) => {
+                    let result = {
+                        let mut env = runtime::Environment::new();
+                        let mut rng = rand::thread_rng();
+                        let mut log = vec![];
+                        let evaluted = exp0.evalute(&mut env, &mut rng, &mut log);
+                        let mut res = format!("{}\n", &content);
+                        for a_line in log {
+                            res += format!(" -> {}", a_line).as_str();
+                        }
+                        res += format!(" -> {}", evaluted).as_str();
+                        res += "\n この返信は動作テスト中の物です。二重に返信があった場合、この返信ではない方の返信を使用してください。";
+                        res
+                    };
+                    let map = json!({
+                        "content": result,
+                        "message_reference": {
+                            "message_id": *msg.id.as_u64()
+                        }
+                    });
+                    let _ = context.http.send_message(msg.channel_id.0, &map).await;
+                }
+                Err(err) => {
+                    let map = json!({
+                        "content": format!("{:?}", err),
+                        "message_reference": {
+                            "message_id": *msg.id.as_u64()
+                        }
+                    });
 
-                let _ = context.http.send_message(msg.channel_id.0, &map).await;
+                    let _ = context.http.send_message(msg.channel_id.0, &map).await;
+                }
             }
         }
     }
