@@ -62,6 +62,19 @@ impl ast::Expr0 {
                 right,
                 operator,
             } => match operator.as_str() {
+                "#" => {
+                    let right = right.evalute(rng, log);
+                    if let Some(mut right) = right.as_integer() {
+                        let mut a = vec![];
+                        while right > 0 {
+                            a.push(left.evalute(rng, log));
+                            right -= 1;
+                        }
+                        Evaluted::Array(a)
+                    } else {
+                        Evaluted::None
+                    }
+                }
                 "==" => {
                     let left = left.evalute(rng, log);
                     let right = right.evalute(rng, log);
