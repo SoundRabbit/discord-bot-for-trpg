@@ -83,26 +83,6 @@ impl ast::Expr0 {
                 right,
                 operator,
             } => match operator.as_str() {
-                " " => {
-                    let left = left.evalute(env, rng, log);
-                    match left.as_ref() {
-                        Value::Fn {
-                            env: scoped_env,
-                            arg,
-                            value,
-                        } => {
-                            let mut scoped_env = scoped_env.capture();
-                            let argv = right.evalute(env, rng, log);
-                            async_std::task::block_on(scoped_env.insert(Arc::clone(arg), argv));
-                            value.evalute(&mut scoped_env, rng, log)
-                        }
-                        Value::BuiltInFunction { implement, .. } => {
-                            let argv = right.evalute(env, rng, log);
-                            implement(argv)
-                        }
-                        _ => Arc::new(Value::None),
-                    }
-                }
                 "#" => {
                     let right = right.evalute(env, rng, log);
                     if let Some(mut right) = right.as_integer() {
@@ -116,184 +96,190 @@ impl ast::Expr0 {
                         Arc::new(Value::None)
                     }
                 }
-                "==" => {
+                "@==" => Self::rep_with_op("==", left, right, env, rng, log),
+                "@!=" => Self::rep_with_op("!=", left, right, env, rng, log),
+                "@<=" => Self::rep_with_op("<=", left, right, env, rng, log),
+                "@>=" => Self::rep_with_op(">=", left, right, env, rng, log),
+                "@<" => Self::rep_with_op("<", left, right, env, rng, log),
+                "@>" => Self::rep_with_op(">", left, right, env, rng, log),
+                op => {
                     let left = left.evalute(env, rng, log);
                     let right = right.evalute(env, rng, log);
-                    Self::compare(log, &left, &right, &mut |left, right| {
-                        if let (Some(left), Some(right)) = (left.as_boolean(), right.as_boolean()) {
-                            Value::Boolean(left == right)
-                        } else if let (Some(left), Some(right)) =
-                            (left.as_integer(), right.as_integer())
-                        {
-                            Value::Boolean(left == right)
-                        } else {
-                            Value::None
-                        }
-                    })
+                    Self::operate(op, left, right, rng, log)
                 }
-                "!=" => {
-                    let left = left.evalute(env, rng, log);
-                    let right = right.evalute(env, rng, log);
-                    Self::compare(log, &left, &right, &mut |left, right| {
-                        if let (Some(left), Some(right)) = (left.as_boolean(), right.as_boolean()) {
-                            Value::Boolean(left != right)
-                        } else if let (Some(left), Some(right)) =
-                            (left.as_integer(), right.as_integer())
-                        {
-                            Value::Boolean(left != right)
-                        } else {
-                            Value::None
-                        }
-                    })
-                }
-                "<=" => {
-                    let left = left.evalute(env, rng, log);
-                    let right = right.evalute(env, rng, log);
-                    Self::compare(log, &left, &right, &mut |left, right| {
-                        if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
-                            Value::Boolean(left <= right)
-                        } else {
-                            Value::None
-                        }
-                    })
-                }
-                ">=" => {
-                    let left = left.evalute(env, rng, log);
-                    let right = right.evalute(env, rng, log);
-                    Self::compare(log, &left, &right, &mut |left, right| {
-                        if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
-                            Value::Boolean(left >= right)
-                        } else {
-                            Value::None
-                        }
-                    })
-                }
-                "<" => {
-                    let left = left.evalute(env, rng, log);
-                    let right = right.evalute(env, rng, log);
-                    Self::compare(log, &left, &right, &mut |left, right| {
-                        if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
-                            Value::Boolean(left < right)
-                        } else {
-                            Value::None
-                        }
-                    })
-                }
-                ">" => {
-                    let left = left.evalute(env, rng, log);
-                    let right = right.evalute(env, rng, log);
-                    Self::compare(log, &left, &right, &mut |left, right| {
-                        if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
-                            Value::Boolean(left > right)
-                        } else {
-                            Value::None
-                        }
-                    })
-                }
-                "+" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(env, rng, log).as_integer(),
-                        right.evalute(env, rng, log).as_integer(),
-                    ) {
-                        Arc::new(Value::Integer(left + right))
-                    } else {
-                        Arc::new(Value::None)
-                    }
-                }
-                "-" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(env, rng, log).as_integer(),
-                        right.evalute(env, rng, log).as_integer(),
-                    ) {
-                        Arc::new(Value::Integer(left - right))
-                    } else {
-                        Arc::new(Value::None)
-                    }
-                }
-                "*" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(env, rng, log).as_integer(),
-                        right.evalute(env, rng, log).as_integer(),
-                    ) {
-                        Arc::new(Value::Integer(left * right))
-                    } else {
-                        Arc::new(Value::None)
-                    }
-                }
-                "/" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(env, rng, log).as_integer(),
-                        right.evalute(env, rng, log).as_integer(),
-                    ) {
-                        Arc::new(Value::Integer(left / right))
-                    } else {
-                        Arc::new(Value::None)
-                    }
-                }
-                "." => {
-                    let right = right.evalute(env, rng, log);
-                    match right.as_ref() {
-                        Value::Fn {
-                            env: scoped_env,
-                            arg,
-                            value,
-                        } => {
-                            let mut scoped_env = scoped_env.capture();
-                            let argv = left.evalute(env, rng, log);
-                            async_std::task::block_on(scoped_env.insert(Arc::clone(arg), argv));
-                            value.evalute(&mut scoped_env, rng, log)
-                        }
-                        Value::BuiltInFunction { implement, .. } => {
-                            let argv = left.evalute(env, rng, log);
-                            implement(argv)
-                        }
-                        _ => Arc::new(Value::None),
-                    }
-                }
-                "b" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(env, rng, log).as_integer(),
-                        right.evalute(env, rng, log).as_integer(),
-                    ) {
-                        let mut res = vec![];
-                        for _ in 0..left {
-                            let d: f64 = rng.sample(rand::distributions::OpenClosed01);
-                            res.push(Arc::new(Value::Integer((d * right as f64).ceil() as i64)));
-                        }
-
-                        log.push(format!("{:?}", &res));
-
-                        Arc::new(Value::Array(res))
-                    } else {
-                        Arc::new(Value::None)
-                    }
-                }
-                "d" => {
-                    if let (Some(left), Some(right)) = (
-                        left.evalute(env, rng, log).as_integer(),
-                        right.evalute(env, rng, log).as_integer(),
-                    ) {
-                        let mut res = vec![];
-                        for _ in 0..left {
-                            let d: f64 = rng.sample(rand::distributions::OpenClosed01);
-                            res.push((d * right as f64).ceil() as i64);
-                        }
-
-                        let mut sum = 0;
-                        for d in &res {
-                            sum += *d;
-                        }
-
-                        log.push(format!("{} {:?}", sum, &res));
-
-                        Arc::new(Value::Integer(sum))
-                    } else {
-                        Arc::new(Value::None)
-                    }
-                }
-                _ => Arc::new(Value::None),
             },
             Self::Term(term) => term.evalute(env, rng, log),
+        }
+    }
+
+    fn rep_with_op(
+        op: &str,
+        left: &Self,
+        right: &Self,
+        env: &mut Environment,
+        rng: &mut impl rand::Rng,
+        log: &mut Vec<String>,
+    ) -> Arc<Value> {
+        let mut rep = left.evalute(env, rng, log);
+        let mut cmp = right.evalute(env, rng, log);
+        let mut res = vec![Arc::clone(&rep)];
+
+        while Self::operate(op, Arc::clone(&rep), Arc::clone(&cmp), rng, log)
+            .as_boolean()
+            .unwrap_or(false)
+        {
+            rep = left.evalute(env, rng, log);
+            cmp = right.evalute(env, rng, log);
+            res.push(Arc::clone(&rep));
+        }
+
+        Arc::new(Value::Array(res))
+    }
+
+    fn operate(
+        op: &str,
+        left: Arc<Value>,
+        right: Arc<Value>,
+        rng: &mut impl rand::Rng,
+        log: &mut Vec<String>,
+    ) -> Arc<Value> {
+        match op {
+            " " => match left.as_ref() {
+                Value::Fn {
+                    env: scoped_env,
+                    arg,
+                    value,
+                } => {
+                    let mut scoped_env = scoped_env.capture();
+                    async_std::task::block_on(scoped_env.insert(Arc::clone(arg), right));
+                    value.evalute(&mut scoped_env, rng, log)
+                }
+                Value::BuiltInFunction { implement, .. } => implement(right),
+                _ => Arc::new(Value::None),
+            },
+            "==" => Self::compare(log, &left, &right, &mut |left, right| {
+                if let (Some(left), Some(right)) = (left.as_boolean(), right.as_boolean()) {
+                    Value::Boolean(left == right)
+                } else if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    Value::Boolean(left == right)
+                } else {
+                    Value::None
+                }
+            }),
+            "!=" => Self::compare(log, &left, &right, &mut |left, right| {
+                if let (Some(left), Some(right)) = (left.as_boolean(), right.as_boolean()) {
+                    Value::Boolean(left != right)
+                } else if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    Value::Boolean(left != right)
+                } else {
+                    Value::None
+                }
+            }),
+            "<=" => Self::compare(log, &left, &right, &mut |left, right| {
+                if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    Value::Boolean(left <= right)
+                } else {
+                    Value::None
+                }
+            }),
+            ">=" => Self::compare(log, &left, &right, &mut |left, right| {
+                if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    Value::Boolean(left >= right)
+                } else {
+                    Value::None
+                }
+            }),
+            "<" => Self::compare(log, &left, &right, &mut |left, right| {
+                if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    Value::Boolean(left < right)
+                } else {
+                    Value::None
+                }
+            }),
+            ">" => Self::compare(log, &left, &right, &mut |left, right| {
+                if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    Value::Boolean(left > right)
+                } else {
+                    Value::None
+                }
+            }),
+            "+" => {
+                if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    Arc::new(Value::Integer(left + right))
+                } else {
+                    Arc::new(Value::None)
+                }
+            }
+            "-" => {
+                if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    Arc::new(Value::Integer(left - right))
+                } else {
+                    Arc::new(Value::None)
+                }
+            }
+            "*" => {
+                if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    Arc::new(Value::Integer(left * right))
+                } else {
+                    Arc::new(Value::None)
+                }
+            }
+            "/" => {
+                if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    Arc::new(Value::Integer(left / right))
+                } else {
+                    Arc::new(Value::None)
+                }
+            }
+            "." => match right.as_ref() {
+                Value::Fn {
+                    env: scoped_env,
+                    arg,
+                    value,
+                } => {
+                    let mut scoped_env = scoped_env.capture();
+                    async_std::task::block_on(scoped_env.insert(Arc::clone(arg), left));
+                    value.evalute(&mut scoped_env, rng, log)
+                }
+                Value::BuiltInFunction { implement, .. } => implement(left),
+                _ => Arc::new(Value::None),
+            },
+            "b" => {
+                if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    let mut res = vec![];
+                    for _ in 0..left {
+                        let d: f64 = rng.sample(rand::distributions::OpenClosed01);
+                        res.push(Arc::new(Value::Integer((d * right as f64).ceil() as i64)));
+                    }
+
+                    log.push(format!("{:?}", &res));
+
+                    Arc::new(Value::Array(res))
+                } else {
+                    Arc::new(Value::None)
+                }
+            }
+            "d" => {
+                if let (Some(left), Some(right)) = (left.as_integer(), right.as_integer()) {
+                    let mut res = vec![];
+                    for _ in 0..left {
+                        let d: f64 = rng.sample(rand::distributions::OpenClosed01);
+                        res.push((d * right as f64).ceil() as i64);
+                    }
+
+                    let mut sum = 0;
+                    for d in &res {
+                        sum += *d;
+                    }
+
+                    log.push(format!("{} {:?}", sum, &res));
+
+                    Arc::new(Value::Integer(sum))
+                } else {
+                    Arc::new(Value::None)
+                }
+            }
+            _ => Arc::new(Value::None),
         }
     }
 

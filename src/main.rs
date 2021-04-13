@@ -67,7 +67,11 @@ impl EventHandler for Handler {
                             res += format!(" -> {}", a_line).as_str();
                         }
                         res += format!(" -> {}", evaluted).as_str();
-                        // res += "\n この返信は動作テスト中の物です。二重に返信があった場合、この返信ではない方の返信を使用してください。";
+                        let debug_msg = include_str!("./debug_msg");
+                        if debug_msg.len() > 0 {
+                            res += "\n";
+                            res += debug_msg;
+                        };
                         res
                     };
                     let map = json!({
