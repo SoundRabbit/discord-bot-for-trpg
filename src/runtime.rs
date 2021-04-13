@@ -2,6 +2,7 @@ use crate::parser::ast;
 use async_std::sync::Arc;
 use std::collections::HashMap;
 
+pub mod built_in_function;
 mod environment;
 
 pub use environment::Environment;
@@ -259,6 +260,9 @@ impl ast::Expr0 {
                             let d: f64 = rng.sample(rand::distributions::OpenClosed01);
                             res.push(Arc::new(Value::Integer((d * right as f64).ceil() as i64)));
                         }
+
+                        log.push(format!("{:?}", &res));
+
                         Arc::new(Value::Array(res))
                     } else {
                         Arc::new(Value::None)

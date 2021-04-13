@@ -56,6 +56,9 @@ impl EventHandler for Handler {
                 Ok(exp0) => {
                     let result = {
                         let mut env = runtime::Environment::new();
+                        async_std::task::block_on(runtime::built_in_function::set_default(
+                            &mut env,
+                        ));
                         let mut rng = rand::thread_rng();
                         let mut log = vec![];
                         let evaluted = exp0.evalute(&mut env, &mut rng, &mut log);
