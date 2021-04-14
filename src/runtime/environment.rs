@@ -3,14 +3,16 @@ use async_std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 
 pub struct Environment {
-    vars: Arc<Mutex<Vec<Var>>>,
+    binds: Arc<Mutex<Vec<Option<Bind>>>>,
     head: usize,
+    root: usize,
 }
 
-struct Var {
+struct Bind {
     parent: usize,
     ident: Arc<String>,
     val: Arc<Value>,
+    rc: usize,
 }
 
 pub enum Value {
@@ -42,8 +44,9 @@ impl Environment {
 
     pub fn new() -> Self {
         let mut this = Self {
-            vars: Arc::new(Mutex::new(vec![])),
+            binds: Arc::new(Mutex::new(vec![])),
             head: 0,
+            root: 0,
         };
         async_std::task::block_on(this.append_build_in_function(
             Arc::new(String::from("help")),
@@ -53,41 +56,85 @@ impl Environment {
         this
     }
 
-    pub fn capture(&self) -> Self {
+    pub async fn capture(&self) -> Self {
+        if let Some(bind) = self
+            .binds
+            .lock()
+            .await
+            .get_mut(self.head - 1)
+            .and_then(Option::as_mut)
+        {
+            bind.rc += 1;
+        }
+
         Self {
-            vars: Arc::clone(&self.vars),
+            binds: Arc::clone(&self.binds),
             head: self.head,
+            root: self.head,
         }
     }
 
     pub async fn insert(&mut self, ident: Arc<String>, val: Arc<Value>) {
-        let var = Var {
+        let bind = Bind {
             parent: self.head,
             ident: ident,
             val: val,
+            rc: 0,
         };
 
         {
-            let mut vars = self.vars.lock().await;
-            vars.push(var);
-            self.head = vars.len();
+            let mut binds = self.binds.lock().await;
+
+            if let Some(idx) = binds.iter().position(|x| x.is_none()) {
+                binds[idx] = Some(bind);
+                self.head = idx + 1;
+            } else {
+                binds.push(Some(bind));
+                self.head = binds.len();
+            }
         }
     }
 
     pub async fn get(&self, ident: &String) -> Option<Arc<Value>> {
         let mut idx = self.head;
         while idx > 0 {
-            if let Some(var) = self.vars.lock().await.get(idx - 1) {
-                if *(var.ident) == *ident {
-                    return Some(Arc::clone(&var.val));
+            if let Some(bind) = self
+                .binds
+                .lock()
+                .await
+                .get(idx - 1)
+                .and_then(Option::as_ref)
+            {
+                if *(bind.ident) == *ident {
+                    return Some(Arc::clone(&bind.val));
                 } else {
-                    idx = var.parent;
+                    idx = bind.parent;
                 }
             } else {
                 break;
             }
         }
         None
+    }
+
+    pub async fn free(&self) {
+        let mut idx = self.head;
+        let mut binds = self.binds.lock().await;
+        while idx >= self.root && idx > 0 {
+            let parent = if let Some(bind) = binds.get_mut(idx - 1).and_then(Option::as_mut) {
+                if bind.rc > 0 {
+                    bind.rc -= 1;
+                    break;
+                } else {
+                    bind.parent
+                }
+            } else {
+                break;
+            };
+
+            binds[idx - 1] = None;
+            idx = parent;
+        }
     }
 
     pub async fn append_build_in_function(

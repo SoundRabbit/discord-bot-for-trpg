@@ -73,7 +73,7 @@ impl ast::Expr0 {
                 Arc::new(Value::None)
             }
             Self::Fn { arg, value } => {
-                let env = env.capture();
+                let env = async_std::task::block_on(env.capture());
                 let arg = Arc::clone(arg);
                 let value = Arc::clone(value);
                 Arc::new(Value::Fn { env, arg, value })
@@ -145,14 +145,12 @@ impl ast::Expr0 {
     ) -> Arc<Value> {
         match op {
             " " => match left.as_ref() {
-                Value::Fn {
-                    env: scoped_env,
-                    arg,
-                    value,
-                } => {
-                    let mut scoped_env = scoped_env.capture();
+                Value::Fn { env, arg, value } => {
+                    let mut scoped_env = async_std::task::block_on(env.capture());
                     async_std::task::block_on(scoped_env.insert(Arc::clone(arg), right));
-                    value.evalute(&mut scoped_env, rng, log)
+                    let val = value.evalute(&mut scoped_env, rng, log);
+                    async_std::task::block_on(scoped_env.free());
+                    val
                 }
                 Value::BuiltInFunction { implement, .. } => implement(right),
                 _ => Arc::new(Value::None),
@@ -232,14 +230,12 @@ impl ast::Expr0 {
                 }
             }
             "." => match right.as_ref() {
-                Value::Fn {
-                    env: scoped_env,
-                    arg,
-                    value,
-                } => {
-                    let mut scoped_env = scoped_env.capture();
+                Value::Fn { env, arg, value } => {
+                    let mut scoped_env = async_std::task::block_on(env.capture());
                     async_std::task::block_on(scoped_env.insert(Arc::clone(arg), left));
-                    value.evalute(&mut scoped_env, rng, log)
+                    let val = value.evalute(&mut scoped_env, rng, log);
+                    async_std::task::block_on(scoped_env.free());
+                    val
                 }
                 Value::BuiltInFunction { implement, .. } => implement(left),
                 _ => Arc::new(Value::None),
@@ -319,7 +315,12 @@ impl ast::Term {
     ) -> Arc<Value> {
         match self {
             Self::Expr0(expr) => expr.evalute(env, rng, log),
-            Self::Proc(proc) => proc.evalute(env, rng, log),
+            Self::Proc(proc) => {
+                let mut scoped_env = async_std::task::block_on(env.capture());
+                let val = proc.evalute(&mut scoped_env, rng, log);
+                async_std::task::block_on(scoped_env.free());
+                val
+            }
             Self::Array(vals) => Arc::new(Value::Array(
                 vals.iter().map(|v| v.evalute(env, rng, log)).collect(),
             )),

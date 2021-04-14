@@ -12,7 +12,7 @@ peg::parser! {
             }
 
         rule proc() -> ast::Proc
-            = exprs: expr0() ** (dlm()? ";" dlm()?) { ast::Proc::new(exprs.into_iter().map(|expr| Arc::new(expr)).collect())}
+            = exprs: expr0() ++ (dlm()? ";" dlm()?) { ast::Proc::new(exprs.into_iter().map(|expr| Arc::new(expr)).collect())}
 
         rule expr0() -> ast::Expr0
             = precedence! {
