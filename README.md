@@ -22,8 +22,20 @@ git clone "https://github.com/SoundRabbit/discord-bot-for-trpg.git"
 
 ### 3. CLIENT SECRETの登録
 
-`discord-bot-for-trpg/src`ディレクトリ（`main.rs`が入っているディレクトリ）内に`token`という名前のテキストファイルを作ります。このファイルに拡張子はいりません。そして、`token`ファイルの中に、`CLIENT SECRET`を保存してください。この時、末尾に改行は必要ありません。
+`discord-bot-for-trpg/src`ディレクトリ（`main.rs`が入っているディレクトリ）内に`token`という名前のテキストファイルを作ります。このファイルに拡張子はいりません。そして、`token`ファイルに、`CLIENT SECRET`を保存してください。この時、末尾に改行は必要ありません。
 
-### 4. BOTの実行
+```txt
+echo [CLIENT SECRECT] > ./src/token
+```
+
+### 4. 追加メッセージの登録
+
+`discord-bot-for-trpg/src`ディレクトリ（`main.rs`が入っているディレクトリ）内に`msg`という名前のテキストファイルを作ります。このファイルに拡張子はいりません。そして、`msg`ファイルには、ボットから送りたいテキストを入れておきます。例えば `この返信はBOTによって行われました` と入れておくと、BOTの返信には `この返信はBOTによって行われました` というテキストが追加されます。通常は空で構わないと思います。
+
+```txt
+touch ./src/msg
+```
+
+### 5. BOTの実行
 
 `cargo run --release`コマンドを`discord-bot-for-trpg`ディレクトリで実行してください。
