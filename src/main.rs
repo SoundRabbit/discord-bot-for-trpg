@@ -67,7 +67,7 @@ impl EventHandler for Handler {
                             res += format!(" -> {}", a_line).as_str();
                         }
                         res += format!(" -> {}", evaluted).as_str();
-                        let debug_msg = include_str!("./debug_msg");
+                        let debug_msg = include_str!("./msg");
                         if debug_msg.len() > 0 {
                             res += "\n";
                             res += debug_msg;
