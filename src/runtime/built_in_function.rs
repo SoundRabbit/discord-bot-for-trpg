@@ -1,16 +1,20 @@
 use super::Environment;
 use super::Value;
+use crate::parser::ast;
 use async_std::sync::Arc;
 
 macro_rules! func {
-    ($help:ident ; $arg:ident => $($args:ident =>)+ $implement:block) => {{
+    ($help:ident ; $arg:ident -> $($args:ident ->)+ $implement:block) => {{
         Arc::new(Value::BuiltInFunction {
             help: Arc::clone(&$help),
-            implement: Box::new(move |$arg| func!($help; $($args =>)+ $implement)),
+            implement: Box::new({
+                let help = Arc::clone(&$help);
+                move |$arg| func!($help; $($args ->)+ $implement)
+            }),
         })
     }};
 
-    ($help:ident ; $arg:ident => $implement:block) => {{
+    ($help:ident ; $arg:ident -> $implement:block) => {{
         Arc::new(Value::BuiltInFunction {
             help: Arc::clone(&$help),
             implement: Box::new(move |$arg| $implement),
@@ -18,21 +22,31 @@ macro_rules! func {
     }};
 }
 
+macro_rules! def_func {
+    ($name:literal $help:ident in $env:ident; $($args:ident ->)+ $implement:block) => {{
+        let val = func!($help; $($args ->)+ $implement);
+        $env.insert(
+            Arc::new(ast::Ident::Strict(Arc::new(String::from($name)))),
+            val,
+        )
+        .await;
+    }};
+}
+
 pub async fn set_default(env: &mut Environment) {
-    // max
+    //max
     let help = Arc::new(String::from(""));
-    let val = func!(help ; a => b => {
+    def_func!("max" help in env ; a -> b -> {
         if let (Some(a), Some(b)) = (a.as_integer(), b.as_integer()) {
             Arc::new(Value::Integer(a.max(b)))
         } else {
             Arc::new(Value::None)
         }
     });
-    env.insert(Arc::new(String::from("max")), val).await;
 
-    // max_of
+    //max_of
     let help = Arc::new(String::from(""));
-    let val = func!(help ; a => b => {
+    def_func!("max_of" help in env ; a -> b -> {
         if let (Some(a), Some(b)) = (a.as_integer(), b.as_array()) {
             let bi: Vec<_> = b.iter().filter_map(|x| x.as_integer()).collect();
             if b.len() == bi.len() && a > 0{
@@ -46,22 +60,20 @@ pub async fn set_default(env: &mut Environment) {
         }
         Arc::new(Value::None)
     });
-    env.insert(Arc::new(String::from("max_of")), val).await;
 
     // min
     let help = Arc::new(String::from(""));
-    let val = func!(help ; a => b => {
+    def_func!("min" help in env ; a -> b -> {
         if let (Some(a), Some(b)) = (a.as_integer(), b.as_integer()) {
             Arc::new(Value::Integer(a.min(b)))
         } else {
             Arc::new(Value::None)
         }
     });
-    env.insert(Arc::new(String::from("min")), val).await;
 
     // min_of
     let help = Arc::new(String::from(""));
-    let val = func!(help ; a => b => {
+    def_func!("min_of" help in env ; a -> b -> {
         if let (Some(a), Some(b)) = (a.as_integer(), b.as_array()) {
             let bi: Vec<_> = b.iter().filter_map(|x| x.as_integer()).collect();
             if b.len() == bi.len() && a > 0{
@@ -75,11 +87,20 @@ pub async fn set_default(env: &mut Environment) {
         }
         Arc::new(Value::None)
     });
-    env.insert(Arc::new(String::from("min_of")), val).await;
 
     // s
-    let help = Arc::new(String::from(""));
-    let val = func!(help ; a => {
+    let help = Arc::new(String::from(
+        "\n\
+        s : Array -> Array\n\
+        \n\
+        ［説明］\n\
+        引数として渡された配列を昇順でソートします。\n\
+        \n\
+        ［使用例］\n\
+        10B6.s //10B6を並び替えて表示\n\
+        20B6.s>=5 //20B6を並び替えて表示して、更に出目が5以上のダイスを数える",
+    ));
+    def_func!("s" help in env ; a -> {
         if let Some(a) = a.as_array() {
             let mut ai: Vec<_> = a.iter().filter_map(|x| x.as_integer()).collect();
             if a.len() == ai.len(){
@@ -90,5 +111,6 @@ pub async fn set_default(env: &mut Environment) {
         }
         Arc::new(Value::None)
     });
-    env.insert(Arc::new(String::from("s")), val).await;
+
+    //at
 }

@@ -16,11 +16,11 @@ peg::parser! {
 
         rule expr0() -> ast::Expr0
             = precedence! {
-                i:ident() dlm()? ":=" dlm()? value: expr0() {ast::Expr0::Def {ident:i, value: Arc::new(value)}}
+                i:ident() dlm()? ":=" dlm()? value: expr0() {ast::Expr0::Def {ident:Arc::new(i), value: Arc::new(value)}}
                 --
                 left:(@) dlm() right:@ {ast::Expr0::Expr0{left: Arc::new(left), right: Arc::new(right), operator: String::from(" ")}}
                 --
-                arg:ident() dlm()? "=>" dlm()? value:expr0() {ast::Expr0::Fn {arg, value: Arc::new(value)}}
+                "\\" dlm()? lambda:lambda() { lambda }
                 --
                 left:(@) dlm()? "#" dlm()? right:@ {ast::Expr0::Expr0{left: Arc::new(left), right: Arc::new(right), operator: String::from("#")}}
                 --
@@ -56,6 +56,12 @@ peg::parser! {
                 term:term() {ast::Expr0::Term(term)}
             }
 
+        rule lambda() -> ast::Expr0
+            = precedence! {
+                arg:strict_ident() dlm()? "->" dlm()? value:expr0() {ast::Expr0::Fn {arg, value: Arc::new(value)}}
+                arg:strict_ident() dlm() args:lambda() {ast::Expr0::Fn {arg, value: Arc::new(args)}}
+            }
+
         rule term() -> ast::Term
             = precedence! {
                 "(" dlm()? expr:expr0() dlm()? ")" {ast::Term::Expr0(Arc::new(expr))}
@@ -67,7 +73,7 @@ peg::parser! {
             }
 
         rule key_value() -> (Arc<String>, ast::Expr0)
-            = ident:ident() dlm()? ":" dlm()? expr:expr0() { (ident, expr) }
+            = ident:strict_ident() dlm()? ":" dlm()? expr:expr0() { (ident, expr) }
 
         rule literal() -> ast::Literal
             = precedence! {
@@ -75,7 +81,13 @@ peg::parser! {
                 i:ident() {ast::Literal::Ident(i)}
             }
 
-        rule ident() -> Arc<String>
+        rule ident() -> ast::Ident
+            = precedence! {
+                x:$(['A'..='Z' | 'a'..='z']) xs:$(['0'..='9' | 'a'..='z' | 'A'..='Z' | '_']*) "?" { ast::Ident::Lazy(Arc::new(String::from(x) + xs)) }
+                x:strict_ident() { ast::Ident::Strict(x) }
+            }
+
+        rule strict_ident() -> Arc<String>
             = x:$(['A'..='Z' | 'a'..='z']) xs:$(['0'..='9' | 'a'..='z' | 'A'..='Z' | '_']*) { Arc::new(String::from(x) + xs) }
 
         rule dlm() = quiet!{[' ' | '\n' | '\t']+}

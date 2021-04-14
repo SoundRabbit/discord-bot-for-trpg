@@ -14,7 +14,7 @@ pub enum Expr0 {
         value: Arc<Expr0>,
     },
     Def {
-        ident: Arc<String>,
+        ident: Arc<Ident>,
         value: Arc<Expr0>,
     },
     Term(Term),
@@ -30,7 +30,13 @@ pub enum Term {
 
 pub enum Literal {
     Integer(i64),
-    Ident(Arc<String>),
+    Ident(Ident),
+}
+
+#[derive(PartialEq)]
+pub enum Ident {
+    Strict(Arc<String>),
+    Lazy(Arc<String>),
 }
 
 impl Proc {
@@ -50,5 +56,21 @@ impl std::ops::Deref for Proc {
 impl std::ops::DerefMut for Proc {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl Ident {
+    pub fn name(&self) -> Arc<String> {
+        match self {
+            Self::Strict(x) => Arc::clone(x),
+            Self::Lazy(x) => Arc::clone(x),
+        }
+    }
+
+    pub fn is_strict(&self) -> bool {
+        match self {
+            Self::Strict(_) => true,
+            _ => false,
+        }
     }
 }

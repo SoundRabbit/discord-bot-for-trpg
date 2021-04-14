@@ -59,7 +59,8 @@ impl EventHandler for Handler {
                         ));
                         let mut rng = rand::thread_rng();
                         let mut log = vec![];
-                        let evaluted = exp0.evalute(&mut env, &mut rng, &mut log);
+                        let begin_time = std::time::Instant::now();
+                        let evaluted = exp0.evalute(&mut env, &mut rng, &mut log, &begin_time);
                         let mut res = format!("{}\n", &content);
 
                         if !evaluted.is_err() {

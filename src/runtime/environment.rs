@@ -10,7 +10,7 @@ pub struct Environment {
 
 struct Bind {
     parent: usize,
-    ident: Arc<String>,
+    ident: Arc<ast::Ident>,
     val: Arc<Value>,
     rc: usize,
 }
@@ -31,6 +31,7 @@ pub enum Value {
         help: Arc<String>,
         implement: Box<dyn Fn(Arc<Value>) -> Arc<Value>>,
     },
+    Lazy(Arc<ast::Expr0>),
     Err(String),
 }
 
@@ -75,7 +76,7 @@ impl Environment {
         }
     }
 
-    pub async fn insert(&mut self, ident: Arc<String>, val: Arc<Value>) {
+    pub async fn insert(&mut self, ident: Arc<ast::Ident>, val: Arc<Value>) {
         let bind = Bind {
             parent: self.head,
             ident: ident,
@@ -96,7 +97,7 @@ impl Environment {
         }
     }
 
-    pub async fn get(&self, ident: &String) -> Option<Arc<Value>> {
+    pub async fn get(&self, ident: &ast::Ident) -> Option<Arc<Value>> {
         let mut idx = self.head;
         while idx > 0 {
             if let Some(bind) = self
@@ -108,6 +109,11 @@ impl Environment {
             {
                 if *(bind.ident) == *ident {
                     return Some(Arc::clone(&bind.val));
+                } else if *bind.ident.name() == *ident.name() {
+                    return Some(Arc::new(Value::Err(format!(
+                        "{0}と{0}?を併用することはできません",
+                        ident.name().as_str()
+                    ))));
                 } else {
                     idx = bind.parent;
                 }
@@ -149,6 +155,7 @@ impl Environment {
             implement: Box::new(implement),
         };
 
-        self.insert(name, Arc::new(val)).await
+        self.insert(Arc::new(ast::Ident::Strict(name)), Arc::new(val))
+            .await
     }
 }
