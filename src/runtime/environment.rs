@@ -31,6 +31,7 @@ pub enum Value {
         help: Arc<String>,
         implement: Box<dyn Fn(Arc<Value>) -> Arc<Value>>,
     },
+    Err(String),
 }
 
 impl Environment {

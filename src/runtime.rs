@@ -8,6 +8,16 @@ mod environment;
 pub use environment::Environment;
 pub use environment::Value;
 
+const TimeLimit: u128 = 1000;
+
+macro_rules! check_tle {
+    ($t:expr) => {
+        if (std::time::Instant::now() - *$t).as_millis() > TimeLimit {
+            return Arc::new(Value::Err(format!("TLE (Limit :{} ms)", TimeLimit)));
+        }
+    };
+}
+
 pub enum ValueElement {
     Integer(i64),
     Boolean(bool),
@@ -33,6 +43,9 @@ impl std::fmt::Debug for Value {
             Self::BuiltInFunction { .. } => {
                 write!(f, "fn")
             }
+            Self::Err(err) => {
+                write!(f, "エラー：{}", err.as_str())
+            }
         }
     }
 }
@@ -51,8 +64,9 @@ impl ast::Proc {
         log: &mut Vec<String>,
     ) -> Arc<Value> {
         let mut res = Arc::new(Value::None);
+        let begin_time = std::time::Instant::now();
         for expr in self.iter() {
-            res = expr.evalute(env, rng, log);
+            res = expr.evalute(env, rng, log, &begin_time);
         }
         res
     }
@@ -64,10 +78,11 @@ impl ast::Expr0 {
         env: &mut Environment,
         rng: &mut impl rand::Rng,
         log: &mut Vec<String>,
+        begin_time: &std::time::Instant,
     ) -> Arc<Value> {
         match self {
             Self::Def { ident, value } => {
-                let value = value.evalute(env, rng, log);
+                let value = value.evalute(env, rng, log, begin_time);
                 println!("{} := {}", ident, value);
                 async_std::task::block_on(env.insert(Arc::clone(ident), value));
                 Arc::new(Value::None)
@@ -84,11 +99,12 @@ impl ast::Expr0 {
                 operator,
             } => match operator.as_str() {
                 "#" => {
-                    let right = right.evalute(env, rng, log);
+                    let right = right.evalute(env, rng, log, begin_time);
                     if let Some(mut right) = right.as_integer() {
                         let mut a = vec![];
                         while right > 0 {
-                            a.push(left.evalute(env, rng, log));
+                            check_tle!(begin_time);
+                            a.push(left.evalute(env, rng, log, begin_time));
                             right -= 1;
                         }
                         Arc::new(Value::Array(a))
@@ -96,19 +112,19 @@ impl ast::Expr0 {
                         Arc::new(Value::None)
                     }
                 }
-                "@==" => Self::rep_with_op("==", left, right, env, rng, log),
-                "@!=" => Self::rep_with_op("!=", left, right, env, rng, log),
-                "@<=" => Self::rep_with_op("<=", left, right, env, rng, log),
-                "@>=" => Self::rep_with_op(">=", left, right, env, rng, log),
-                "@<" => Self::rep_with_op("<", left, right, env, rng, log),
-                "@>" => Self::rep_with_op(">", left, right, env, rng, log),
+                "@==" => Self::rep_with_op("==", left, right, env, rng, log, begin_time),
+                "@!=" => Self::rep_with_op("!=", left, right, env, rng, log, begin_time),
+                "@<=" => Self::rep_with_op("<=", left, right, env, rng, log, begin_time),
+                "@>=" => Self::rep_with_op(">=", left, right, env, rng, log, begin_time),
+                "@<" => Self::rep_with_op("<", left, right, env, rng, log, begin_time),
+                "@>" => Self::rep_with_op(">", left, right, env, rng, log, begin_time),
                 op => {
-                    let left = left.evalute(env, rng, log);
-                    let right = right.evalute(env, rng, log);
-                    Self::operate(op, left, right, rng, log)
+                    let left = left.evalute(env, rng, log, begin_time);
+                    let right = right.evalute(env, rng, log, begin_time);
+                    Self::operate(op, left, right, rng, log, begin_time)
                 }
             },
-            Self::Term(term) => term.evalute(env, rng, log),
+            Self::Term(term) => term.evalute(env, rng, log, begin_time),
         }
     }
 
@@ -119,17 +135,20 @@ impl ast::Expr0 {
         env: &mut Environment,
         rng: &mut impl rand::Rng,
         log: &mut Vec<String>,
+        begin_time: &std::time::Instant,
     ) -> Arc<Value> {
-        let mut rep = left.evalute(env, rng, log);
-        let mut cmp = right.evalute(env, rng, log);
+        let mut rep = left.evalute(env, rng, log, begin_time);
+        let mut cmp = right.evalute(env, rng, log, begin_time);
         let mut res = vec![Arc::clone(&rep)];
 
-        while Self::operate(op, Arc::clone(&rep), Arc::clone(&cmp), rng, log)
+        while Self::operate(op, Arc::clone(&rep), Arc::clone(&cmp), rng, log, begin_time)
             .as_boolean()
             .unwrap_or(false)
         {
-            rep = left.evalute(env, rng, log);
-            cmp = right.evalute(env, rng, log);
+            check_tle!(begin_time);
+
+            rep = left.evalute(env, rng, log, begin_time);
+            cmp = right.evalute(env, rng, log, begin_time);
             res.push(Arc::clone(&rep));
         }
 
@@ -142,13 +161,15 @@ impl ast::Expr0 {
         right: Arc<Value>,
         rng: &mut impl rand::Rng,
         log: &mut Vec<String>,
+        begin_time: &std::time::Instant,
     ) -> Arc<Value> {
         match op {
             " " => match left.as_ref() {
                 Value::Fn { env, arg, value } => {
+                    check_tle!(begin_time);
                     let mut scoped_env = async_std::task::block_on(env.capture());
                     async_std::task::block_on(scoped_env.insert(Arc::clone(arg), right));
-                    let val = value.evalute(&mut scoped_env, rng, log);
+                    let val = value.evalute(&mut scoped_env, rng, log, begin_time);
                     async_std::task::block_on(scoped_env.free());
                     val
                 }
@@ -231,9 +252,10 @@ impl ast::Expr0 {
             }
             "." => match right.as_ref() {
                 Value::Fn { env, arg, value } => {
+                    check_tle!(begin_time);
                     let mut scoped_env = async_std::task::block_on(env.capture());
                     async_std::task::block_on(scoped_env.insert(Arc::clone(arg), left));
-                    let val = value.evalute(&mut scoped_env, rng, log);
+                    let val = value.evalute(&mut scoped_env, rng, log, begin_time);
                     async_std::task::block_on(scoped_env.free());
                     val
                 }
@@ -312,9 +334,10 @@ impl ast::Term {
         env: &mut Environment,
         rng: &mut impl rand::Rng,
         log: &mut Vec<String>,
+        begin_time: &std::time::Instant,
     ) -> Arc<Value> {
         match self {
-            Self::Expr0(expr) => expr.evalute(env, rng, log),
+            Self::Expr0(expr) => expr.evalute(env, rng, log, begin_time),
             Self::Proc(proc) => {
                 let mut scoped_env = async_std::task::block_on(env.capture());
                 let val = proc.evalute(&mut scoped_env, rng, log);
@@ -322,11 +345,13 @@ impl ast::Term {
                 val
             }
             Self::Array(vals) => Arc::new(Value::Array(
-                vals.iter().map(|v| v.evalute(env, rng, log)).collect(),
+                vals.iter()
+                    .map(|v| v.evalute(env, rng, log, begin_time))
+                    .collect(),
             )),
             Self::Record(vals) => Arc::new(Value::Record(
                 vals.iter()
-                    .map(|(i, v)| (Arc::clone(i), v.evalute(env, rng, log)))
+                    .map(|(i, v)| (Arc::clone(i), v.evalute(env, rng, log, begin_time)))
                     .collect(),
             )),
             Self::Literal(literal) => literal.evalute(env),

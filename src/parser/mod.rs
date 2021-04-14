@@ -71,7 +71,7 @@ peg::parser! {
 
         rule literal() -> ast::Literal
             = precedence! {
-                n:$(['0'..='9']+) { ast::Literal::Integer(n.parse().unwrap()) }
+                n:$(['0'..='9']+) { ast::Literal::Integer(n.parse().unwrap_or(0)) }
                 i:ident() {ast::Literal::Ident(i)}
             }
 
