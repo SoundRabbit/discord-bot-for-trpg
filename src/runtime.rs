@@ -8,12 +8,13 @@ mod environment;
 pub use environment::Environment;
 pub use environment::Value;
 
-const TimeLimit: u128 = 1000;
+const TIME_LIMIT: u128 = 1000;
 
 macro_rules! check_tle {
     ($t:expr) => {
-        if (std::time::Instant::now() - *$t).as_millis() > TimeLimit {
-            return Arc::new(Value::Err(format!("TLE (Limit :{} ms)", TimeLimit)));
+        if (std::time::Instant::now() - *$t).as_millis() > TIME_LIMIT {
+            println!("TLE");
+            return Arc::new(Value::Err(format!("TLE (Limit :{} ms)", TIME_LIMIT)));
         }
     };
 }
@@ -374,6 +375,13 @@ impl Value {
     fn is_boolean(&self) -> bool {
         match self {
             Self::Boolean(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_err(&self) -> bool {
+        match self {
+            Self::Err(_) => true,
             _ => false,
         }
     }

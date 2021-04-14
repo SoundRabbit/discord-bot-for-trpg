@@ -48,10 +48,8 @@ impl EventHandler for Handler {
     async fn message(&self, context: Context, msg: Message) {
         if msg.mentions_me(&context).await.unwrap_or(false) {
             // メンションを削除
-            println!("{}", &msg.content);
             let content = self.mention_pattern.replace_all(&msg.content, "");
             let content = self.comment_pattern.replace_all(&content, "");
-            println!("{}", &content);
             match parser::context::parse(&content) {
                 Ok(exp0) => {
                     let result = {
@@ -63,15 +61,21 @@ impl EventHandler for Handler {
                         let mut log = vec![];
                         let evaluted = exp0.evalute(&mut env, &mut rng, &mut log);
                         let mut res = format!("{}\n", &content);
-                        for a_line in log {
-                            res += format!(" -> {}", a_line).as_str();
+
+                        if !evaluted.is_err() {
+                            for a_line in log {
+                                res += format!(" -> {}", a_line).as_str();
+                            }
                         }
+
                         res += format!(" -> {}", evaluted).as_str();
+
                         let debug_msg = include_str!("./msg");
                         if debug_msg.len() > 0 {
                             res += "\n";
                             res += debug_msg;
                         };
+
                         res
                     };
                     let map = json!({
